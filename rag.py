@@ -43,22 +43,40 @@ class RagBasedQA:
         os.makedirs(self.pdfs_directory, exist_ok=True)
 
     def upload_file(self, file):
+        """Upload a PDF file and create a directory if it doesn't exist then save the file."""
         file_path = os.path.join(self.pdfs_directory, file.name)
         with open(file_path, "wb") as new_file:
             new_file.write(file.getbuffer())
         return file_path
 
     def load_and_process_file(self, file_path):
+        """
+        Load a PDF file from the specified directory using PDFPlumber of langchain.
+        Each page of the PDF is representing a document.
+
+        Split the text of the PDF documents into characters using RecursiveCharacterTextSplitter of langchain.
+        """
         loader = PDFPlumberLoader(file_path)
         documents = loader.load()
+
+        # Split the text of the PDF documents into characters using RecursiveCharacterTextSplitter of langchain.
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=200
         )
+
         chunked_documents = text_splitter.split_documents(documents)
+        self.vector_store = InMemoryVectorStore.from_documents(
+            chunked_documents, embeddings
+        )
         self.vector_store.add_documents(chunked_documents)
         return chunked_documents
 
     def retrieve_documents(self, query):
+        """
+        Retrieve the documents using InMemoryVectorStore of langchain we can use
+        chroma(https://docs.trychroma.com/docs/overview/introduction).
+        By using vector_store to retrieve the documents since all the documents are stored there
+        """
         return self.vector_store.similarity_search(query)
 
     def answer_question(self, question, documents):
