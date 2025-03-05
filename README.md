@@ -1,6 +1,6 @@
 # 📄 RAG-Based PDF QA System with Streamlit & LangChain
 
-This project is a **PDF-based Question-Answering System** built using **Streamlit**, **LangChain**, and **Ollama LLM**. It allows users to upload PDF files, index their content as vector embeddings, and retrieve relevant information to answer user queries using **DeepSeek-R1 (1.5B)**.
+This project is a **PDF-based Question-Answering System** built using **Streamlit**, **LangChain**, and **Ollama LLM**. It allows users to upload PDF files, index their content as vector embeddings, and retrieve relevant information to answer user queries using **DeepSeek-R1 (1.5B)** or any version.
 
 ## 🚀 Features
 
@@ -76,55 +76,6 @@ To prevent your device from overheating 🤣, **select the distilled version of 
 ### **5. AI-Powered Answer Generation**
 
 - The retrieved text is **fed into Ollama LLM**, which generates a **concise answer**.
-
-## 📜 Code Overview
-
-### **1️⃣ Upload & Save PDF**
-
-```python
-def upload_file(file):
-    with open(pdfs_directory + file.name, "wb") as new_file:
-        new_file.write(file.getbuffer())
-```
-
-### **2️⃣ Load PDF Content**
-
-```python
-def load_file(file_path):
-    loader = PDFPlumberLoader(file_path)
-    documents = loader.load()
-    return documents
-```
-
-### **3️⃣ Chunk & Index Documents**
-
-```python
-def split_text(documents):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    return text_splitter.split_documents(documents)
-```
-
-```python
-def index_documents(documents):
-    vector_store.add_documents(documents)
-```
-
-### **4️⃣ Retrieve Relevant Documents**
-
-```python
-def retrieve_documents(query):
-    return vector_store.similarity_search(query)
-```
-
-### **5️⃣ Generate Answers Using Ollama LLM**
-
-```python
-def answer_question(question, documents):
-    prompt = ChatPromptTemplate.from_template(template)
-    context = "\n\n".join([doc.page_content for doc in documents])
-    chain = prompt | model  # Chaining prompt to the model
-    return chain.invoke({"question": question, "context": context})
-```
 
 ## 🏃 Running the App
 
