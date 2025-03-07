@@ -1,9 +1,10 @@
 import os
 
+import chromadb
 import streamlit as st
+from langchain.vectorstores import Chroma
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_ollama import OllamaEmbeddings
 from langchain_ollama.llms import OllamaLLM
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -20,11 +21,6 @@ chunk_size = st.sidebar.slider(
     "Chunk Size", min_value=500, max_value=2000, value=1000, step=100
 )
 
-# Initialize Model and Embeddings
-model = OllamaLLM(model=selected_model)
-embeddings = OllamaEmbeddings(model=selected_model)
-vector_store = InMemoryVectorStore(embeddings)
-
 template = """
 You are an assistant for question-answering tasks. Use the retrieved context
 to answer the question. If you don't know the answer, say so. Keep it concise.
@@ -35,12 +31,21 @@ Answer:
 
 
 class RagBasedQA:
-    def __init__(self, model, embeddings, vector_store):
-        self.model = model
-        self.embeddings = embeddings
-        self.vector_store = vector_store
+    def __init__(self):
+        self.model = OllamaLLM(model=selected_model)
+        self.embeddings = OllamaEmbeddings(model=selected_model)
         self.pdfs_directory = "./uploaded/pdfs/"
+        self.chroma_path = "./chromadb"
+        os.makedirs(self.chroma_path, exist_ok=True)
         os.makedirs(self.pdfs_directory, exist_ok=True)
+
+        # Initialize Chroma client and vector store
+        self.chroma_client = chromadb.PersistentClient(path=self.chroma_path)
+        self.vector_store = Chroma(
+            client=self.chroma_client,
+            collection_name="rag_collection",
+            embedding_function=self.embeddings,
+        )
 
     def upload_file(self, file):
         """Upload a PDF file and create a directory if it doesn't exist then save the file."""
@@ -63,11 +68,9 @@ class RagBasedQA:
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=200
         )
-
         chunked_documents = text_splitter.split_documents(documents)
-        self.vector_store = InMemoryVectorStore.from_documents(
-            chunked_documents, embeddings
-        )
+
+        # Store vector data in chromadb
         self.vector_store.add_documents(chunked_documents)
         return chunked_documents
 
@@ -77,7 +80,8 @@ class RagBasedQA:
         chroma(https://docs.trychroma.com/docs/overview/introduction).
         By using vector_store to retrieve the documents since all the documents are stored there
         """
-        return self.vector_store.similarity_search(query)
+        # Retrieve the documents from chromadb top 3 similar documents
+        return self.vector_store.similarity_search(query, k=3)
 
     def answer_question(self, question, documents):
         prompt = ChatPromptTemplate.from_template(template)
@@ -127,5 +131,5 @@ class RagBasedQA:
 
 
 if __name__ == "__main__":
-    rag = RagBasedQA(model, embeddings, vector_store)
+    rag = RagBasedQA()
     rag.run()
